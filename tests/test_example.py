@@ -1,16 +1,16 @@
-"""Example tests for ezmsg-example package."""
+"""Example tests for ezmsg-peripheraldevice package."""
 
 
 def test_import():
     """Test that the package can be imported."""
-    import ezmsg.example
+    import ezmsg.peripheraldevice
 
-    assert hasattr(ezmsg.example, "__version__")
+    assert hasattr(ezmsg.peripheraldevice, "__version__")
 
 
 def test_version():
     """Test that version is a string."""
-    from ezmsg.example import __version__
+    from ezmsg.peripheraldevice import __version__
 
     assert isinstance(__version__, str)
 

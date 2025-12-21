@@ -1,11 +1,11 @@
-# ezmsg-example
+# ezmsg-peripheraldevice
 
 Short description of your ezmsg package.
 
 ## Installation
 
 ```bash
-pip install ezmsg-example
+pip install ezmsg-peripheraldevice
 ```
 
 ## Dependencies
@@ -19,7 +19,7 @@ See the `examples` folder for usage examples.
 
 ```python
 import ezmsg.core as ez
-from ezmsg.example import MyUnit
+from ezmsg.peripheraldevice import MyUnit
 
 # Your usage example here
 ```
