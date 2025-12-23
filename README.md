@@ -15,13 +15,26 @@ pip install ezmsg-peripheraldevice
 
 ## Usage
 
-See the `examples` folder for usage examples.
+### Mouse Examples
+
+**Event-driven mouse listener** - captures every mouse movement event:
+
+```bash
+python examples/mouse_listen.py
+```
+
+**Polling mouse position** - reads mouse position at a fixed rate:
+
+```bash
+python examples/mouse_poll.py --rate 60
+```
+
+### Programmatic Usage
 
 ```python
 import ezmsg.core as ez
-from ezmsg.peripheraldevice import MyUnit
-
-# Your usage example here
+from ezmsg.peripheraldevice import MouseListener, MouseListenerSettings
+from ezmsg.peripheraldevice import MousePoller, MousePollerSettings
 ```
 
 ## Development
