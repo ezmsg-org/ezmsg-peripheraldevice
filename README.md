@@ -11,7 +11,9 @@ pip install ezmsg-peripheraldevice
 ## Dependencies
 
 - `ezmsg`
+- `ezmsg-baseproc`
 - `numpy`
+- `pynput`
 
 ## Usage
 
@@ -36,6 +38,8 @@ import ezmsg.core as ez
 from ezmsg.peripheraldevice import MouseListener, MouseListenerSettings
 from ezmsg.peripheraldevice import MousePoller, MousePollerSettings
 ```
+
+> Note: MouseListener requires extra permissions.
 
 ## Development
 
