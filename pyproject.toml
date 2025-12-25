@@ -9,8 +9,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "ezmsg>=3.6.0",
-  "ezmsg-baseproc",
-  "ezmsg-simbiophys",
+  "ezmsg-baseproc>=1.1.0",
   "numpy>=1.26.0",
   "pynput>=1.8.1",
 ]
@@ -69,7 +68,7 @@ select = ["E", "F", "I", "W"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["ezmsg.peripheraldevice"]
-known-third-party = ["ezmsg"]
+known-third-party = ["ezmsg", "ezmsg.baseproc"]
 
 [tool.uv.sources]
 # Uncomment to use development version of ezmsg from git
