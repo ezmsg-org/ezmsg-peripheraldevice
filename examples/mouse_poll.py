@@ -39,9 +39,7 @@ class MousePollSystem(ez.Collection):
     LOG = DebugLog()
 
     def configure(self) -> None:
-        self.CLOCK.apply_settings(
-            ClockSettings(dispatch_rate=self.SETTINGS.poll_rate)
-        )
+        self.CLOCK.apply_settings(ClockSettings(dispatch_rate=self.SETTINGS.poll_rate))
         self.MOUSE.apply_settings(MousePollerSettings())
 
     def network(self) -> ez.NetworkDefinition:

@@ -4,14 +4,13 @@ import time as time_module
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-import pytest
 from ezmsg.util.messages.axisarray import AxisArray
 
 from ezmsg.peripheraldevice.mouse import (
+    MouseListenerProducer,
+    MouseListenerSettings,
     MousePollerSettings,
     MousePollerTransformer,
-    MouseListenerSettings,
-    MouseListenerProducer,
 )
 
 

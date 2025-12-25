@@ -1,13 +1,13 @@
 from .__version__ import __version__ as __version__
 from .mouse import (
+    MouseListener,
     MouseListenerProducer,
     MouseListenerSettings,
     MouseListenerState,
-    MouseListener,
+    MousePoller,
     MousePollerSettings,
     MousePollerState,
     MousePollerTransformer,
-    MousePoller,
 )
 
 __all__ = [

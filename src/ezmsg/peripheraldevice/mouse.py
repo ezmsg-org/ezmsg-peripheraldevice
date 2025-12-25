@@ -6,15 +6,14 @@ import time
 import ezmsg.core as ez
 import numpy as np
 from ezmsg.baseproc import (
+    BaseProducerUnit,
     BaseStatefulProducer,
     BaseStatefulTransformer,
-    BaseProducerUnit,
     BaseTransformerUnit,
     processor_state,
 )
 from ezmsg.util.messages.axisarray import AxisArray, replace
 from pynput.mouse import Controller, Listener
-
 
 # =============================================================================
 # Polled Mouse Transformer (takes LinearAxis from Clock, like Counter)
@@ -130,9 +129,7 @@ class MouseListenerState:
     template: AxisArray | None = None
 
 
-class MouseListenerProducer(
-    BaseStatefulProducer[MouseListenerSettings, AxisArray, MouseListenerState]
-):
+class MouseListenerProducer(BaseStatefulProducer[MouseListenerSettings, AxisArray, MouseListenerState]):
     """
     Produces mouse position events as they occur.
 
@@ -218,9 +215,7 @@ class MouseListenerProducer(
 
         return x_vals, y_vals, timestamps
 
-    def _build_output(
-        self, x_vals: list[float], y_vals: list[float], timestamps: list[float]
-    ) -> AxisArray | None:
+    def _build_output(self, x_vals: list[float], y_vals: list[float], timestamps: list[float]) -> AxisArray | None:
         """Build output AxisArray from collected events."""
         if not timestamps:
             return None
@@ -257,9 +252,7 @@ class MouseListenerProducer(
             self._state.listener.stop()
 
 
-class MouseListener(
-    BaseProducerUnit[MouseListenerSettings, AxisArray, MouseListenerProducer]
-):
+class MouseListener(BaseProducerUnit[MouseListenerSettings, AxisArray, MouseListenerProducer]):
     """
     Unit for event-driven mouse position capture.
 
