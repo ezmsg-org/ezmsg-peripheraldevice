@@ -61,10 +61,10 @@ class MousePollerTransformer(
             data=np.zeros((1, 2), dtype=np.float64),
             dims=["time", "ch"],
             axes={
-                "time": AxisArray.CoordinateAxis(
-                    data=np.array([message.offset]),
-                    dims=["time"],
+                "time": AxisArray.LinearAxis(
                     unit="s",
+                    gain=message.gain,
+                    offset=message.offset,
                 ),
                 "ch": AxisArray.CoordinateAxis(
                     data=np.array(["x", "y"]),
@@ -82,7 +82,7 @@ class MousePollerTransformer(
         data = np.array([[pos[0], pos[1]]], dtype=np.float64)
         time_axis = replace(
             self._state.template.axes["time"],
-            data=np.array([message.offset]),
+            offset=message.offset,
         )
 
         return replace(

@@ -15,7 +15,7 @@ import ezmsg.core as ez
 from ezmsg.baseproc import Clock, ClockSettings
 from ezmsg.util.debuglog import DebugLog
 
-from ezmsg.peripheraldevice import MousePoller, MousePollerSettings
+from ezmsg.peripheraldevice import MousePoller
 
 
 class MousePollSettings(ez.Settings):
@@ -40,7 +40,6 @@ class MousePollSystem(ez.Collection):
 
     def configure(self) -> None:
         self.CLOCK.apply_settings(ClockSettings(dispatch_rate=self.SETTINGS.poll_rate))
-        self.MOUSE.apply_settings(MousePollerSettings())
 
     def network(self) -> ez.NetworkDefinition:
         return (

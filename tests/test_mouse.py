@@ -83,8 +83,8 @@ class TestMousePollerTransformer:
 
         # Check that time axis offset matches input
         time_axis = result.axes["time"]
-        assert isinstance(time_axis, AxisArray.CoordinateAxis)
-        assert time_axis.data[0] == 1.5
+        assert isinstance(time_axis, AxisArray.LinearAxis)
+        assert time_axis.offset == 1.5
 
     @patch("ezmsg.peripheraldevice.mouse.Controller")
     def test_multiple_calls(self, mock_controller_class):
@@ -105,7 +105,7 @@ class TestMousePollerTransformer:
             assert result.data.shape == (1, 2)
             assert np.all(np.isfinite(result.data))
             # Time axis should have offset matching clock tick
-            assert result.axes["time"].data[0] == i * 0.1
+            assert result.axes["time"].offset == i * 0.1
             # Data should match mock position
             np.testing.assert_array_equal(result.data[0], [i * 10, i * 20])
 
