@@ -5,9 +5,9 @@ from .mouse import (
     MouseListenerSettings,
     MouseListenerState,
     MousePoller,
+    MousePollerProducer,
     MousePollerSettings,
     MousePollerState,
-    MousePollerTransformer,
 )
 
 __all__ = [
@@ -16,8 +16,8 @@ __all__ = [
     "MouseListenerSettings",
     "MouseListenerState",
     "MouseListener",
+    "MousePollerProducer",
     "MousePollerSettings",
     "MousePollerState",
-    "MousePollerTransformer",
     "MousePoller",
 ]

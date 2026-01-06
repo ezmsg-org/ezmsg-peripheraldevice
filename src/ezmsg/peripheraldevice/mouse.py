@@ -6,42 +6,41 @@ import time
 import ezmsg.core as ez
 import numpy as np
 from ezmsg.baseproc import (
+    BaseClockDrivenProducer,
+    BaseClockDrivenUnit,
     BaseProducerUnit,
     BaseStatefulProducer,
-    BaseStatefulTransformer,
-    BaseTransformerUnit,
+    ClockDrivenSettings,
+    ClockDrivenState,
     processor_state,
 )
 from ezmsg.util.messages.axisarray import AxisArray, replace
 from pynput.mouse import Controller, Listener
 
 # =============================================================================
-# Polled Mouse Transformer (takes LinearAxis from Clock, like Counter)
+# Polled Mouse Producer (takes LinearAxis from Clock)
 # =============================================================================
 
 
-class MousePollerSettings(ez.Settings):
-    """Settings for MousePollerTransformer."""
+class MousePollerSettings(ClockDrivenSettings):
+    """Settings for MousePollerProducer."""
 
-    pass
+    fs: float = 1.0
+    """Sample rate placeholder (not used - mouse is polled per clock tick)."""
+
+    n_time: int = 1
+    """Samples per tick (always 1 for mouse polling)."""
 
 
 @processor_state
-class MousePollerState:
-    """State for MousePollerTransformer."""
+class MousePollerState(ClockDrivenState):
+    """State for MousePollerProducer."""
 
     controller: Controller | None = None
     template: AxisArray | None = None
 
 
-class MousePollerTransformer(
-    BaseStatefulTransformer[
-        MousePollerSettings,
-        AxisArray.LinearAxis,
-        AxisArray,
-        MousePollerState,
-    ]
-):
+class MousePollerProducer(BaseClockDrivenProducer[MousePollerSettings, MousePollerState]):
     """
     Reads current mouse position when triggered by clock tick.
 
@@ -52,7 +51,7 @@ class MousePollerTransformer(
     Output: AxisArray with shape (1, 2) - single sample with x, y channels
     """
 
-    def _reset_state(self, message: AxisArray.LinearAxis) -> None:
+    def _reset_state(self, time_axis: AxisArray.LinearAxis) -> None:
         """Initialize mouse controller."""
         self._state.controller = Controller()
 
@@ -61,11 +60,7 @@ class MousePollerTransformer(
             data=np.zeros((1, 2), dtype=np.float64),
             dims=["time", "ch"],
             axes={
-                "time": AxisArray.LinearAxis(
-                    unit="s",
-                    gain=message.gain,
-                    offset=message.offset,
-                ),
+                "time": time_axis,
                 "ch": AxisArray.CoordinateAxis(
                     data=np.array(["x", "y"]),
                     dims=["ch"],
@@ -74,32 +69,21 @@ class MousePollerTransformer(
             key="mouse",
         )
 
-    def _process(self, message: AxisArray.LinearAxis) -> AxisArray:
+    def _produce(self, n_samples: int, time_axis: AxisArray.LinearAxis) -> AxisArray:
         """Read current mouse position and return as AxisArray."""
         pos = self._state.controller.position
 
-        # Create output with single sample
+        # Create output with single sample (ignores n_samples - mouse is instantaneous)
         data = np.array([[pos[0], pos[1]]], dtype=np.float64)
-        time_axis = replace(
-            self._state.template.axes["time"],
-            offset=message.offset,
-        )
 
         return replace(
             self._state.template,
             data=data,
-            axes={"time": time_axis, "ch": self._state.template.axes["ch"]},
+            axes={**self._state.template.axes, "time": time_axis},
         )
 
 
-class MousePoller(
-    BaseTransformerUnit[
-        MousePollerSettings,
-        AxisArray.LinearAxis,
-        AxisArray,
-        MousePollerTransformer,
-    ]
-):
+class MousePoller(BaseClockDrivenUnit[MousePollerSettings, MousePollerProducer]):
     """
     Unit for reading mouse position from Clock input.
 

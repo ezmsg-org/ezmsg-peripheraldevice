@@ -9,28 +9,28 @@ from ezmsg.util.messages.axisarray import AxisArray
 from ezmsg.peripheraldevice.mouse import (
     MouseListenerProducer,
     MouseListenerSettings,
+    MousePollerProducer,
     MousePollerSettings,
-    MousePollerTransformer,
 )
 
 
-class TestMousePollerTransformer:
-    """Tests for MousePollerTransformer."""
+class TestMousePollerProducer:
+    """Tests for MousePollerProducer."""
 
     @patch("ezmsg.peripheraldevice.mouse.Controller")
     def test_basic_output(self, mock_controller_class):
-        """Test that transformer produces valid output."""
+        """Test that producer produces valid output."""
         # Setup mock
         mock_controller = MagicMock()
         mock_controller.position = (100, 200)
         mock_controller_class.return_value = mock_controller
 
-        transformer = MousePollerTransformer(MousePollerSettings())
+        producer = MousePollerProducer(MousePollerSettings())
 
         # Create a LinearAxis input (like what Clock produces)
         clock_tick = AxisArray.LinearAxis(gain=0.1, offset=0.0)
 
-        result = transformer(clock_tick)
+        result = producer(clock_tick)
 
         # Check output shape
         assert result.data.shape == (1, 2), "Output should be (1, 2) for single sample with x, y"
@@ -59,11 +59,11 @@ class TestMousePollerTransformer:
         mock_controller.position = (500, 300)
         mock_controller_class.return_value = mock_controller
 
-        transformer = MousePollerTransformer(MousePollerSettings())
+        producer = MousePollerProducer(MousePollerSettings())
 
         clock_tick = AxisArray.LinearAxis(gain=0.1, offset=0.0)
 
-        result = transformer(clock_tick)
+        result = producer(clock_tick)
 
         # Check that values are finite numbers
         assert np.all(np.isfinite(result.data)), "Output should contain finite numbers"
@@ -75,11 +75,11 @@ class TestMousePollerTransformer:
         mock_controller.position = (0, 0)
         mock_controller_class.return_value = mock_controller
 
-        transformer = MousePollerTransformer(MousePollerSettings())
+        producer = MousePollerProducer(MousePollerSettings())
 
         clock_tick = AxisArray.LinearAxis(gain=0.05, offset=1.5)
 
-        result = transformer(clock_tick)
+        result = producer(clock_tick)
 
         # Check that time axis offset matches input
         time_axis = result.axes["time"]
@@ -88,11 +88,11 @@ class TestMousePollerTransformer:
 
     @patch("ezmsg.peripheraldevice.mouse.Controller")
     def test_multiple_calls(self, mock_controller_class):
-        """Test that transformer works correctly across multiple calls."""
+        """Test that producer works correctly across multiple calls."""
         mock_controller = MagicMock()
         mock_controller_class.return_value = mock_controller
 
-        transformer = MousePollerTransformer(MousePollerSettings())
+        producer = MousePollerProducer(MousePollerSettings())
 
         for i in range(5):
             # Update mock position each call
@@ -100,7 +100,7 @@ class TestMousePollerTransformer:
 
             clock_tick = AxisArray.LinearAxis(gain=0.1, offset=i * 0.1)
 
-            result = transformer(clock_tick)
+            result = producer(clock_tick)
 
             assert result.data.shape == (1, 2)
             assert np.all(np.isfinite(result.data))
