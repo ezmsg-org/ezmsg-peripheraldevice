@@ -18,14 +18,15 @@ class TestMousePollerProducer:
     """Tests for MousePollerProducer."""
 
     @patch("ezmsg.peripheraldevice.mouse.Controller")
-    def test_basic_output(self, mock_controller_class):
-        """Test that producer produces valid output."""
+    def test_basic_output_simple_mode(self, mock_controller_class):
+        """Test that producer produces valid output in simple polling mode."""
         # Setup mock
         mock_controller = MagicMock()
         mock_controller.position = (100, 200)
         mock_controller_class.return_value = mock_controller
 
-        producer = MousePollerProducer(MousePollerSettings())
+        # Use fs=10 to match clock rate (1/0.1 = 10 Hz) for simple mode
+        producer = MousePollerProducer(MousePollerSettings(fs=10.0, n_time=1))
 
         # Create a LinearAxis input (like what Clock produces)
         clock_tick = AxisArray.LinearAxis(gain=0.1, offset=0.0)
@@ -59,7 +60,8 @@ class TestMousePollerProducer:
         mock_controller.position = (500, 300)
         mock_controller_class.return_value = mock_controller
 
-        producer = MousePollerProducer(MousePollerSettings())
+        # Use matching fs for simple mode
+        producer = MousePollerProducer(MousePollerSettings(fs=10.0, n_time=1))
 
         clock_tick = AxisArray.LinearAxis(gain=0.1, offset=0.0)
 
@@ -75,7 +77,8 @@ class TestMousePollerProducer:
         mock_controller.position = (0, 0)
         mock_controller_class.return_value = mock_controller
 
-        producer = MousePollerProducer(MousePollerSettings())
+        # Use matching fs for simple mode
+        producer = MousePollerProducer(MousePollerSettings(fs=20.0, n_time=1))
 
         clock_tick = AxisArray.LinearAxis(gain=0.05, offset=1.5)
 
@@ -87,12 +90,13 @@ class TestMousePollerProducer:
         assert time_axis.offset == 1.5
 
     @patch("ezmsg.peripheraldevice.mouse.Controller")
-    def test_multiple_calls(self, mock_controller_class):
-        """Test that producer works correctly across multiple calls."""
+    def test_multiple_calls_simple_mode(self, mock_controller_class):
+        """Test that producer works correctly across multiple calls in simple mode."""
         mock_controller = MagicMock()
         mock_controller_class.return_value = mock_controller
 
-        producer = MousePollerProducer(MousePollerSettings())
+        # Use matching fs for simple mode (1/0.1 = 10 Hz)
+        producer = MousePollerProducer(MousePollerSettings(fs=10.0, n_time=1))
 
         for i in range(5):
             # Update mock position each call
@@ -108,6 +112,80 @@ class TestMousePollerProducer:
             assert result.axes["time"].offset == i * 0.1
             # Data should match mock position
             np.testing.assert_array_equal(result.data[0], [i * 10, i * 20])
+
+    @patch("ezmsg.peripheraldevice.mouse.Controller")
+    def test_threaded_mode_with_n_time_greater_than_1(self, mock_controller_class):
+        """Test that producer uses threaded mode when n_time > 1."""
+        mock_controller = MagicMock()
+        mock_controller.position = (100, 200)
+        mock_controller_class.return_value = mock_controller
+
+        # n_time > 1 triggers threaded mode
+        producer = MousePollerProducer(MousePollerSettings(fs=100.0, n_time=10))
+
+        clock_tick = AxisArray.LinearAxis(gain=0.1, offset=0.0)
+
+        # Give the thread a moment to poll
+        result = producer(clock_tick)
+        time_module.sleep(0.15)  # Let thread poll a few times
+
+        result = producer(clock_tick)
+
+        # Should have n_time samples
+        assert result.data.shape == (10, 2)
+        assert np.all(np.isfinite(result.data))
+
+        # Clean up thread
+        del producer
+
+    @patch("ezmsg.peripheraldevice.mouse.Controller")
+    def test_threaded_mode_with_rate_mismatch(self, mock_controller_class):
+        """Test variable chunk mode (n_time=None) with fs != clock rate."""
+        mock_controller = MagicMock()
+        mock_controller.position = (50, 75)
+        mock_controller_class.return_value = mock_controller
+
+        # n_time=None, fs=100 != clock rate of 10 Hz triggers threaded mode
+        # n_samples = fs * clock.gain = 100 * 0.1 = 10 samples per tick
+        producer = MousePollerProducer(MousePollerSettings(fs=100.0, n_time=None))
+
+        clock_tick = AxisArray.LinearAxis(gain=0.1, offset=0.0)
+
+        # First call initializes, give thread time to poll
+        result = producer(clock_tick)
+        time_module.sleep(0.15)  # Let thread poll ~15 times at 100 Hz
+
+        # Now get result with buffered data
+        result = producer(clock_tick)
+
+        # Should have n_samples = fs * gain = 100 * 0.1 = 10 samples
+        assert result.data.shape == (10, 2)
+        assert np.all(np.isfinite(result.data))
+
+        # Clean up thread
+        del producer
+
+    @patch("ezmsg.peripheraldevice.mouse.Controller")
+    def test_variable_chunk_mode_simple(self, mock_controller_class):
+        """Test variable chunk mode (n_time=None) with fs matching clock rate."""
+        mock_controller = MagicMock()
+        mock_controller.position = (123, 456)
+        mock_controller_class.return_value = mock_controller
+
+        # n_time=None, fs=10 matches clock rate of 10 Hz - no thread needed
+        # n_samples = fs * clock.gain = 10 * 0.1 = 1 sample per tick
+        producer = MousePollerProducer(MousePollerSettings(fs=10.0, n_time=None))
+
+        clock_tick = AxisArray.LinearAxis(gain=0.1, offset=0.0)
+
+        result = producer(clock_tick)
+
+        # Should have n_samples = 1 (simple mode, no thread)
+        assert result.data.shape == (1, 2)
+        np.testing.assert_array_equal(result.data[0], [123, 456])
+
+        # No thread should be running
+        assert producer._state.use_thread is False
 
 
 class TestMouseListenerProducer:
