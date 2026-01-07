@@ -43,7 +43,7 @@ class MousePollSystem(ez.Collection):
 
     def network(self) -> ez.NetworkDefinition:
         return (
-            (self.CLOCK.OUTPUT_SIGNAL, self.MOUSE.INPUT_SIGNAL),
+            (self.CLOCK.OUTPUT_SIGNAL, self.MOUSE.INPUT_CLOCK),
             (self.MOUSE.OUTPUT_SIGNAL, self.LOG.INPUT),
         )
 
