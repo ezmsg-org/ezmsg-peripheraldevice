@@ -1,10 +1,12 @@
 """Tests for mouse input module."""
 
+import logging
 import time as time_module
 from unittest.mock import MagicMock, patch
 
+import ezmsg.baseproc.stateful
 import numpy as np
-from ezmsg.util.messages.axisarray import AxisArray
+from ezmsg.util.messages.axisarray import AxisArray, compute_config_id
 
 from ezmsg.peripheraldevice.mouse import (
     MouseListenerProducer,
@@ -187,6 +189,36 @@ class TestMousePollerProducer:
         # No thread should be running
         assert producer._state.use_thread is False
 
+    @patch("ezmsg.peripheraldevice.mouse.compute_config_id", wraps=compute_config_id)
+    @patch("ezmsg.peripheraldevice.mouse.Controller")
+    def test_config_id_and_segment(self, mock_controller_class, mock_compute, monkeypatch, caplog):
+        """One declared id per layout; a new segment per reset; the tick's gain stays out of the id."""
+        mock_controller_class.return_value = MagicMock(position=(1, 2))
+        # The output check must find nothing to correct.
+        monkeypatch.setattr(ezmsg.baseproc.stateful, "_warned_unannounced", set())
+
+        # One sample per tick (no thread) from a 10 Hz clock, labelled 60 Hz as before.
+        producer = MousePollerProducer(MousePollerSettings(fs=60.0, n_time=1))
+        with caplog.at_level(logging.WARNING, logger="ezmsg.baseproc.stateful"):
+            first = [producer(AxisArray.LinearAxis(gain=0.1, offset=i * 0.1)) for i in range(3)]
+            # A new clock rate resets (restarts polling): new segment, same layout.
+            faster = [producer(AxisArray.LinearAxis(gain=0.05, offset=1 + i * 0.05)) for i in range(3)]
+            producer.update_settings(MousePollerSettings(fs=120.0, n_time=1))
+            relabelled = [producer(AxisArray.LinearAxis(gain=0.05, offset=2 + i * 0.05)) for i in range(3)]
+        assert not caplog.records
+
+        for msgs, fs in ((first, 60.0), (faster, 60.0), (relabelled, 120.0)):
+            assert msgs[0].axes["time"].gain == 1 / fs
+            assert len({m.config_id for m in msgs}) == len({m.segment for m in msgs}) == 1
+            assert all(m.config_id and m.config_id == compute_config_id(m) for m in msgs)
+        assert faster[0].config_id == first[0].config_id
+        assert relabelled[0].config_id != first[0].config_id
+        assert [first[0].segment, faster[0].segment, relabelled[0].segment] == [0, 1, 2]
+        assert mock_compute.call_count == 3  # once per reset, not per message
+
+        other = MousePollerProducer(MousePollerSettings(fs=60.0, n_time=1))
+        assert other(AxisArray.LinearAxis(gain=0.1, offset=0.0)).segment == 0  # a fresh instance starts at 0
+
 
 class TestMouseListenerProducer:
     """Tests for MouseListenerProducer."""
@@ -336,3 +368,32 @@ class TestMouseListenerProducer:
         assert event2[0] == 160
         assert event2[1] == 260
         assert isinstance(event2[2], float)  # timestamp
+
+    @patch("ezmsg.peripheraldevice.mouse.compute_config_id", wraps=compute_config_id)
+    @patch("ezmsg.peripheraldevice.mouse.Listener")
+    def test_config_id_and_segment(self, mock_listener_class, mock_compute):
+        """Every message declares the template's id; a restarted listener starts a new segment."""
+        mock_listener_class.return_value = MagicMock()
+        producer = MouseListenerProducer(MouseListenerSettings())
+        producer()
+
+        msgs = []
+        for i in range(3):
+            producer._state.event_queue.put((float(i), float(i), time_module.monotonic() + i))
+            producer._state.event_queue.put((float(i), float(i), time_module.monotonic() + i + 0.5))
+            msgs.append(producer())
+        assert len({m.config_id for m in msgs}) == len({m.segment for m in msgs}) == 1
+        assert all(m.config_id and m.config_id == compute_config_id(m) for m in msgs)
+        assert mock_compute.call_count == 1
+
+        producer._request_reset()
+        producer()
+        producer._state.event_queue.put((0.0, 0.0, time_module.monotonic()))
+        restarted = producer()
+        assert msgs[0].segment == 0
+        assert restarted.config_id == msgs[0].config_id and restarted.segment == 1
+
+        other = MouseListenerProducer(MouseListenerSettings())
+        other()
+        other._state.event_queue.put((0.0, 0.0, time_module.monotonic()))
+        assert other().segment == 0  # a fresh instance starts at 0
