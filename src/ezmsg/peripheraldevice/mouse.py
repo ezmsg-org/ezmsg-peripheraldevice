@@ -17,7 +17,7 @@ from ezmsg.baseproc import (
     ClockDrivenState,
     processor_state,
 )
-from ezmsg.util.messages.axisarray import AxisArray, replace
+from ezmsg.util.messages.axisarray import AxisArray, compute_config_id, replace
 from pynput.mouse import Controller, Listener
 
 # =============================================================================
@@ -138,14 +138,18 @@ class MousePollerProducer(BaseClockDrivenProducer[MousePollerSettings, MousePoll
             data=np.zeros((n_time_for_template, 2), dtype=np.float64),
             dims=["time", "ch"],
             axes={
-                "time": time_axis,
+                # Not `time_axis`, the clock tick: the outputs' time axis is 1 / fs (BaseClockDrivenProducer),
+                # and config_id digests its gain. The poll timing above still follows the tick.
+                "time": AxisArray.TimeAxis(fs=self.settings.fs),
                 "ch": AxisArray.CoordinateAxis(
                     data=np.array(["x", "y"]),
                     dims=["ch"],
                 ),
             },
             key="mouse",
+            segment=0 if self._state.template is None else self._state.template.segment + 1,
         )
+        self._state.template.config_id = compute_config_id(self._state.template)
 
     def _poll_loop(self) -> None:
         """Background thread that polls mouse at poll_rate."""
@@ -297,11 +301,10 @@ class MouseListenerProducer(BaseStatefulProducer[MouseListenerSettings, AxisArra
                 ),
             },
             key="mouse",
+            # Events have no regular rate, so only a restarted listener breaks the stream.
+            segment=0 if self._state.template is None else self._state.template.segment + 1,
         )
-
-    def _hash_message(self) -> int:
-        # Return constant - state persists across calls
-        return 0
+        self._state.template.config_id = compute_config_id(self._state.template)
 
     def _drain_queue(self) -> tuple[list[float], list[float], list[float]]:
         """Drain all events from queue."""
